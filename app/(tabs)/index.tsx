@@ -1,100 +1,99 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { router } from "expo-router";
+import React from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import AppHeader from "../../src/components/AppHeader";
 
 export default function HomeScreen() {
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-  <ThemedText type="title">Discipol</ThemedText>
-  <ThemedText type="subtitle">
-    Build self-discipline in 30 days.
-  </ThemedText>
-</ThemedView>
+    <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
+      <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+      <Text style={{ fontSize: 22, fontWeight: "900" }}>How it works ✨</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <View
+        style={{
+          padding: 16,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: "#f2c6b6",
+          backgroundColor: "#fff3ee",
+          gap: 10,
+        }}
+      >
+        <Text style={{ fontSize: 16 }}>
+          🌱 Every day you’ll have{" "}
+          <Text style={{ fontWeight: "900" }}>5 small tasks</Text> to complete.
+        </Text>
+        <Text style={{ fontSize: 16 }}>
+          🧩 These are <Text style={{ fontWeight: "900" }}>tiny steps</Text> that
+          create big change over time.
+        </Text>
+        <Text style={{ fontSize: 16 }}>
+          🔒 You <Text style={{ fontWeight: "900" }}>cannot go to the next day</Text>{" "}
+          without completing the current day.
+        </Text>
+        <Text style={{ fontSize: 16 }}>
+          ⏳ You can stay on the same day{" "}
+          <Text style={{ fontWeight: "900" }}>as long as it takes</Text> — no pressure.
+        </Text>
+      </View>
+
+      <Pressable
+        onPress={() => router.push("/(tabs)/explore")}
+        style={{
+          paddingVertical: 14,
+          paddingHorizontal: 14,
+          borderRadius: 18,
+          borderWidth: 2,
+          borderColor: "#e7b8a5",
+          backgroundColor: "#fff7f2",
+          alignItems: "center",
+        }}
+      >
+        <Text style={{ fontWeight: "900", fontSize: 16 }}>
+          Choose your first area →
+        </Text>
+      </Pressable>
+
+      <View
+        style={{
+          padding: 16,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: "#c8d9f0",
+          backgroundColor: "#f2f7ff",
+          gap: 10,
+        }}
+      >
+        <Text style={{ fontSize: 18, fontWeight: "900" }}>
+          Mindset for success 🌱
+        </Text>
+        <Text style={{ color: "#334", fontSize: 16 }}>
+          Be honest with yourself. You’re your own boss.
+        </Text>
+        <Text style={{ color: "#334", fontSize: 16 }}>
+          Small wins count. Consistency beats intensity.
+        </Text>
+        <Text style={{ color: "#334", fontSize: 16 }}>
+          If you miss a task: no shame — reset and continue.
+        </Text>
+      </View>
+
+      <View
+        style={{
+          padding: 16,
+          borderRadius: 20,
+          borderWidth: 1,
+          borderColor: "#cde6d3",
+          backgroundColor: "#f3fbf5",
+          gap: 8,
+        }}
+      >
+        <Text style={{ fontWeight: "900", fontSize: 16 }}>Pro tip 🚀</Text>
+        <Text style={{ color: "#234", fontSize: 16 }}>
+          Start with 1–2 areas. Once the rhythm is easy, add more.
+        </Text>
+      </View>
+    </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
