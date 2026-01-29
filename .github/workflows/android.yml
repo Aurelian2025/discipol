@@ -1,0 +1,31 @@
+name: Android Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Expo & EAS CLI
+        run: npm install -g expo-cli eas-cli
+
+      - name: Authenticate with Expo
+        run: eas whoami || eas login --token ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android AAB
+        env:
+          EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ 
+secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
+        run: eas build -p android --profile production --non-interactive
+
