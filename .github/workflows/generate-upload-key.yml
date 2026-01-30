@@ -1,0 +1,39 @@
+name: Generate Upload Key
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Java
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk
+
+      - name: Generate upload keystore
+        run: |
+          keytool -genkeypair -v \
+            -keystore upload-keystore.jks \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -alias upload \
+            -storepass password123 \
+            -keypass password123 \
+            -dname "CN=Upload,O=Discipol,C=CA"
+
+      - name: Export upload certificate
+        run: |
+          keytool -export -rfc \
+            -keystore upload-keystore.jks \
+            -alias upload \
+            -storepass password123 \
+            -file upload_certificate.pem
+
+      - name: Upload certificate
+        uses: actions/upload-artifact@v4
+        with:
+          name: upload-certificate
+          path: upload_certificate.pem
