@@ -2,53 +2,45 @@ name: Android AAB (CI)
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
   build_aab:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+          cache: npm
 
-      - name: Setup Java (JDK 17)
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
+          distribution: temurin
           java-version: "17"
-          cache: "gradle"
+          cache: gradle
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
 
-      - name: Expo prebuild (Android)
+      - name: Expo prebuild
         env:
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ 
 secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
         run: npx expo prebuild --platform android --no-install
 
-      - name: Build Android AAB
+      - name: Build AAB
         env:
           EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY: ${{ 
 secrets.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY }}
         run: |
           cd android
-          chmod +x ./gradlew
-          ./gradlew :app:bundleRelease
+          chmod +x gradlew
+          ./gradlew bundleRelease
 
-      - name: Upload AAB artifact
+      - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: discipol-release-aab
+          name: discipol-aab
           path: android/app/build/outputs/bundle/release/*.aab
-          if-no-files-found: error
 
