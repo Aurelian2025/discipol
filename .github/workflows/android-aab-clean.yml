@@ -1,0 +1,35 @@
+name: Android AAB Clean
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Java 17 (no gradle detection)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openjdk-17-jdk
+          java -version
+
+      - run: npm ci
+
+      - run: npx expo prebuild --platform android
+
+      - run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-aab
+          path: android/app/build/outputs/bundle/release/*.aab
