@@ -3,6 +3,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+import Purchases from "react-native-purchases";
 
 import {
   getIsPro,
@@ -13,6 +14,7 @@ import {
 export default function SubscribeScreen() {
   const [isPro, setPro] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [price, setPrice] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -21,8 +23,15 @@ export default function SubscribeScreen() {
 
         const restored = await restoreProFromGooglePlay();
         setPro(restored);
+
+        const offerings = await Purchases.getOfferings();
+        const pkg = offerings.current?.monthly;
+
+        if (pkg) {
+          setPrice(pkg.product.priceString);
+        }
       } catch (e) {
-        console.warn("restore error", e);
+        console.warn("init error", e);
       }
     })();
   }, []);
@@ -69,11 +78,13 @@ export default function SubscribeScreen() {
         }}
       >
         <Text style={{ fontSize: 18, fontWeight: "900" }}>Unlock Pro</Text>
+
         <Text style={{ color: "#444", fontSize: 16 }}>
           • Unlimited active areas{"\n"}
           • Build your own custom plans{"\n"}
           • Work on multiple habits at once
         </Text>
+
         <Text style={{ color: "#444", fontSize: 16 }}>
           Subscription billed monthly via Google Play. Cancel anytime.
         </Text>
@@ -91,7 +102,11 @@ export default function SubscribeScreen() {
           }}
         >
           <Text style={{ fontWeight: "900", fontSize: 16 }}>
-            {busy ? "Please wait…" : "Subscribe now"}
+            {busy
+              ? "Please wait…"
+              : price
+              ? `Subscribe — ${price} / month`
+              : "Subscribe"}
           </Text>
         </Pressable>
 
