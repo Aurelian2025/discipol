@@ -1,16 +1,15 @@
 // src/subscription/subscription.ts
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import Purchases, { LOG_LEVEL, PACKAGE_TYPE } from "react-native-purchases";
+import Purchases, { LOG_LEVEL } from "react-native-purchases";
 
 const IS_PRO_KEY = "discipol.isPro";
 
-// RevenueCat product is now: discipol_pro_monthly:base
-// We DO NOT match by raw string anymore. We use the Monthly package from the Offering.
-export const SUBSCRIPTION_ID = "discipol_pro_monthly:base";
-
-// MUST exist in RevenueCat dashboard and be linked to the product
+// MUST match the Entitlement ID in RevenueCat
 const ENTITLEMENT_ID = "pro";
+
+// MUST match the Package Identifier in the Offering
+const MONTHLY_PACKAGE_ID = "monthly";
 
 let configured = false;
 
@@ -20,7 +19,6 @@ async function configure() {
   Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
 
   const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
-
   if (!apiKey) {
     throw new Error("Missing EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY");
   }
@@ -51,7 +49,6 @@ export async function restoreProFromGooglePlay(): Promise<boolean> {
   const isPro = Boolean(info.entitlements.active[ENTITLEMENT_ID]);
 
   await setIsPro(isPro);
-
   return isPro;
 }
 
@@ -65,19 +62,22 @@ export async function purchaseProMonthly(): Promise<void> {
     throw new Error("No offerings configured in RevenueCat");
   }
 
-  // Use the Monthly package from the offering (this maps to discipol_pro_monthly:base)
-  const pkg =
-    offering.monthly ||
-    offering.availablePackages.find(
-      (p) => p.packageType === PACKAGE_TYPE.MONTHLY
-    );
+  // ✅ Explicit lookup by Package Identifier
+  const pkg = offering.availablePackages.find(
+    (p) => p.identifier === MONTHLY_PACKAGE_ID
+  );
 
   if (!pkg) {
-    throw new Error("Monthly package not found in RevenueCat offering");
+    throw new Error(
+      `Monthly package (${MONTHLY_PACKAGE_ID}) not found in RevenueCat offering`
+    );
   }
 
   const result = await Purchases.purchasePackage(pkg);
 
-  const isPro = Boolean(result.customerInfo.entitlements.active[ENTITLEMENT_ID]);
+  const isPro = Boolean(
+    result.customerInfo.entitlements.active[ENTITLEMENT_ID]
+  );
+
   await setIsPro(isPro);
 }
