@@ -91,7 +91,7 @@ export default function SubscribeScreen() {
           }}
         >
           <Text style={{ fontWeight: "900", fontSize: 16 }}>
-            {busy ? "Please wait…" : "Subscribe — $15 / month"}
+            {busy ? "Please wait…" : "Subscribe now"}
           </Text>
         </Pressable>
 
