@@ -8,9 +8,6 @@ const IS_PRO_KEY = "discipol.isPro";
 // MUST match the Entitlement ID in RevenueCat
 const ENTITLEMENT_ID = "pro";
 
-// MUST match the Package Identifier in the Offering
-const MONTHLY_PACKAGE_ID = "monthly";
-
 let configured = false;
 
 async function configure() {
@@ -24,6 +21,10 @@ async function configure() {
   }
 
   Purchases.configure({ apiKey });
+
+  // 🔑 Force-refresh cached customer + offerings (safe, one-time)
+  await Purchases.invalidateCustomerInfoCache();
+  await Purchases.getOfferings();
 
   Purchases.addCustomerInfoUpdateListener(async (info) => {
     const isPro = Boolean(info.entitlements.active[ENTITLEMENT_ID]);
@@ -56,24 +57,13 @@ export async function purchaseProMonthly(): Promise<void> {
   await configure();
 
   const offerings = await Purchases.getOfferings();
-  const offering = offerings.current;
+  const monthlyPkg = offerings.current?.monthly;
 
-  if (!offering) {
-    throw new Error("No offerings configured in RevenueCat");
+  if (!monthlyPkg) {
+    throw new Error("Monthly package not found in current RevenueCat offering");
   }
 
-  // ✅ Explicit lookup by Package Identifier
-  const pkg = offering.availablePackages.find(
-    (p) => p.identifier === MONTHLY_PACKAGE_ID
-  );
-
-  if (!pkg) {
-    throw new Error(
-      `Monthly package (${MONTHLY_PACKAGE_ID}) not found in RevenueCat offering`
-    );
-  }
-
-  const result = await Purchases.purchasePackage(pkg);
+  const result = await Purchases.purchasePackage(monthlyPkg);
 
   const isPro = Boolean(
     result.customerInfo.entitlements.active[ENTITLEMENT_ID]
