@@ -3,6 +3,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
+
 import Purchases from "react-native-purchases";
 
 import {
@@ -14,7 +15,7 @@ import {
 export default function SubscribeScreen() {
   const [isPro, setPro] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [price, setPrice] = useState<string | null>(null);
+  const [priceText, setPriceText] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -24,11 +25,16 @@ export default function SubscribeScreen() {
         const restored = await restoreProFromGooglePlay();
         setPro(restored);
 
+        // 🔑 Fetch price dynamically from RevenueCat
         const offerings = await Purchases.getOfferings();
-        const pkg = offerings.current?.monthly;
+        const offering = offerings.current;
 
-        if (pkg) {
-          setPrice(pkg.product.priceString);
+        const monthlyPkg = offering?.availablePackages.find(
+          (p) => p.identifier === "monthly"
+        );
+
+        if (monthlyPkg) {
+          setPriceText(monthlyPkg.product.priceString);
         }
       } catch (e) {
         console.warn("init error", e);
@@ -52,7 +58,7 @@ export default function SubscribeScreen() {
       } else {
         Alert.alert(
           "Purchase incomplete",
-          "Purchase finished but Pro was not unlocked. Please contact support."
+          "Purchase finished but Pro was not unlocked."
         );
       }
     } catch (e: any) {
@@ -104,8 +110,8 @@ export default function SubscribeScreen() {
           <Text style={{ fontWeight: "900", fontSize: 16 }}>
             {busy
               ? "Please wait…"
-              : price
-              ? `Subscribe — ${price} / month`
+              : priceText
+              ? `Subscribe — ${priceText} / month`
               : "Subscribe"}
           </Text>
         </Pressable>
