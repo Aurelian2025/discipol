@@ -1,5 +1,4 @@
 // app/subscribe.tsx
-
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, Pressable, ScrollView, Text, View } from "react-native";
@@ -25,13 +24,9 @@ export default function SubscribeScreen() {
         const restored = await restoreProFromGooglePlay();
         setPro(restored);
 
-        // 🔑 Fetch price dynamically from RevenueCat
+        // 🔑 Correct way: use offerings.current.monthly
         const offerings = await Purchases.getOfferings();
-        const offering = offerings.current;
-
-        const monthlyPkg = offering?.availablePackages.find(
-          (p) => p.identifier === "monthly"
-        );
+        const monthlyPkg = offerings.current?.monthly;
 
         if (monthlyPkg) {
           setPriceText(monthlyPkg.product.priceString);
