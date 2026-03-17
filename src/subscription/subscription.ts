@@ -8,6 +8,9 @@ const IS_PRO_KEY = "discipol.isPro";
 // MUST match the Entitlement ID in RevenueCat
 const ENTITLEMENT_ID = "pro";
 
+// Set EXPO_PUBLIC_PAYMENTS_MODE=test to bypass RevenueCat (e.g. on Vercel)
+const PAYMENTS_MODE = process.env.EXPO_PUBLIC_PAYMENTS_MODE ?? "revenuecat";
+
 let configured = false;
 
 async function configure() {
@@ -44,6 +47,11 @@ export async function setIsPro(value: boolean): Promise<void> {
 }
 
 export async function restoreProFromGooglePlay(): Promise<boolean> {
+  if (PAYMENTS_MODE === "test") {
+    // In test mode, just re-read the locally stored value — no RevenueCat call
+    return getIsPro();
+  }
+
   await configure();
 
   const info = await Purchases.restorePurchases();
@@ -54,6 +62,12 @@ export async function restoreProFromGooglePlay(): Promise<boolean> {
 }
 
 export async function purchaseProMonthly(): Promise<void> {
+  if (PAYMENTS_MODE === "test") {
+    // In test mode, immediately unlock Pro without hitting RevenueCat
+    await setIsPro(true);
+    return;
+  }
+
   await configure();
 
   const offerings = await Purchases.getOfferings();
