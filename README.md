@@ -19,7 +19,23 @@ The `vercel.json` at the repo root handles everything automatically:
 
 **No manual build-settings changes are needed in the Vercel dashboard.**
 
-### Environment variables (Vercel project → Settings → Environment Variables)
+### Add the environment variable
+
+To enable test mode (Subscribe button unlocks Pro immediately, no RevenueCat needed):
+
+1. Open your project on [vercel.com](https://vercel.com)
+2. Click **Settings** (top nav)
+3. Click **Environment Variables** (left sidebar)
+4. Add a new variable:
+   - **Name:** `EXPO_PUBLIC_PAYMENTS_MODE`
+   - **Value:** `test`
+   - **Environments:** ✅ Production (check all environments you want to test on)
+5. Click **Save**
+6. Go to **Deployments** and click **Redeploy** on the latest deployment
+
+After redeployment, visiting `/subscribe` will no longer 404, and clicking **Subscribe** will immediately unlock Pro.
+
+#### All supported environment variables
 
 | Variable | Value | Purpose |
 |---|---|---|
