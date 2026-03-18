@@ -1,15 +1,8 @@
 // app/subscribe.tsx
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
-
-import Purchases from "react-native-purchases";
-
-import {
-  getIsPro,
-  purchaseProMonthly,
-  restoreProFromGooglePlay,
-} from "../src/subscription/subscription";
+import { Alert, Pressable, ScrollView, Text, View, Platform } from "react-native";
+import { getCurrentUser } from "../src/supabase/auth";
 
 export default function SubscribeScreen() {
   const [isPro, setPro] = useState(false);
@@ -19,18 +12,11 @@ export default function SubscribeScreen() {
   useEffect(() => {
     (async () => {
       try {
-        setPro(await getIsPro());
+        // ✅ RevenueCat isn’t available on web (Vercel builds web)
+        if (Platform.OS === "web") return;
 
-        const restored = await restoreProFromGooglePlay();
+        const restored = await getIsPro();
         setPro(restored);
-
-        // 🔑 Correct way: use offerings.current.monthly
-        const offerings = await Purchases.getOfferings();
-        const monthlyPkg = offerings.current?.monthly;
-
-        if (monthlyPkg) {
-          setPriceText(monthlyPkg.product.priceString);
-        }
       } catch (e) {
         console.warn("init error", e);
       }
@@ -39,13 +25,45 @@ export default function SubscribeScreen() {
 
   async function onSubscribe() {
     if (busy) return;
+
+    // ✅ Require account creation before subscribing
+    try {
+      const { data, error } = await getCurrentUser();
+      if (error) console.warn("getCurrentUser error", error);
+
+      if (!data?.user) {
+        Alert.alert(
+          "Account needed",
+          "After paying with PayPal, you must create an account (same email) to activate Pro.",
+          [
+            { text: "Create account", onPress: () => router.push("/signup") },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+        return;
+      }
+    } catch (e) {
+      console.warn("getCurrentUser unexpected error", e);
+      Alert.alert("Error", "Could not check account status. Please try again.");
+      return;
+    }
+
+    // Web safety
+    if (Platform.OS === "web") {
+      Alert.alert(
+        "Not available on web",
+        "Subscriptions are only available in the mobile app."
+      );
+      return;
+    }
+
     setBusy(true);
 
     try {
       await purchaseProMonthly();
 
       const pro = await getIsPro();
-      setPro(pro);
+      setPro(!!pro);
 
       if (pro) {
         Alert.alert("Success 🎉", "Pro unlocked!");
@@ -63,6 +81,12 @@ export default function SubscribeScreen() {
       setBusy(false);
     }
   }
+
+  const subscribeLabel = busy
+    ? "Please wait…"
+    : priceText
+    ? `Subscribe — ${priceText} / month`
+    : "Subscribe";
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
@@ -103,11 +127,7 @@ export default function SubscribeScreen() {
           }}
         >
           <Text style={{ fontWeight: "900", fontSize: 16 }}>
-            {busy
-              ? "Please wait…"
-              : priceText
-              ? `Subscribe — ${priceText} / month`
-              : "Subscribe"}
+            {subscribeLabel}
           </Text>
         </Pressable>
 
