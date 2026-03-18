@@ -1,9 +1,14 @@
 // app/subscribe.tsx
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View } from "react-native";
-
-import Purchases from "react-native-purchases";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  Platform,
+} from "react-native";
 
 import {
   getIsPro,
@@ -11,6 +16,8 @@ import {
   restoreProFromGooglePlay,
 } from "../src/subscription/subscription";
 import { getCurrentUser } from "../src/supabase/auth";
+
+type PurchasesType = typeof import("react-native-purchases").default;
 
 export default function SubscribeScreen() {
   const [isPro, setPro] = useState(false);
@@ -25,7 +32,12 @@ export default function SubscribeScreen() {
         const restored = await restoreProFromGooglePlay();
         setPro(restored);
 
-        // 🔑 Correct way: use offerings.current.monthly
+        // RevenueCat isn't available on web (Vercel builds web)
+        if (Platform.OS === "web") return;
+
+        const Purchases: PurchasesType = (await import("react-native-purchases"))
+          .default;
+
         const offerings = await Purchases.getOfferings();
         const monthlyPkg = offerings.current?.monthly;
 
@@ -44,9 +56,7 @@ export default function SubscribeScreen() {
     // ✅ Require account creation before subscribing
     try {
       const { data, error } = await getCurrentUser();
-      if (error) {
-        console.warn("getCurrentUser error", error);
-      }
+      if (error) console.warn("getCurrentUser error", error);
 
       if (!data?.user) {
         Alert.alert(
@@ -62,6 +72,15 @@ export default function SubscribeScreen() {
     } catch (e) {
       console.warn("getCurrentUser unexpected error", e);
       Alert.alert("Error", "Could not check account status. Please try again.");
+      return;
+    }
+
+    // Web safety
+    if (Platform.OS === "web") {
+      Alert.alert(
+        "Not available on web",
+        "Subscriptions are only available in the mobile app."
+      );
       return;
     }
 
@@ -90,6 +109,12 @@ export default function SubscribeScreen() {
     }
   }
 
+  const subscribeLabel = busy
+    ? "Please wait…"
+    : priceText
+    ? `Subscribe — ${priceText} / month`
+    : "Subscribe";
+
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
       <Text style={{ fontSize: 26, fontWeight: "900" }}>Discipol Pro ⭐</Text>
@@ -116,6 +141,12 @@ export default function SubscribeScreen() {
           Subscription billed monthly via Google Play. Cancel anytime.
         </Text>
 
+        {Platform.OS === "web" ? (
+          <Text style={{ color: "#444", fontSize: 14 }}>
+            Subscriptions are only available in the mobile app.
+          </Text>
+        ) : null}
+
         <Pressable
           onPress={onSubscribe}
           disabled={busy}
@@ -129,11 +160,7 @@ export default function SubscribeScreen() {
           }}
         >
           <Text style={{ fontWeight: "900", fontSize: 16 }}>
-            {busy
-              ? "Please wait…"
-              : priceText
-              ? `Subscribe — ${priceText} / month`
-              : "Subscribe"}
+            {subscribeLabel}
           </Text>
         </Pressable>
 
