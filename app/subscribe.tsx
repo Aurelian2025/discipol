@@ -10,6 +10,7 @@ import {
   purchaseProMonthly,
   restoreProFromGooglePlay,
 } from "../src/subscription/subscription";
+import { getCurrentUser } from "../src/supabase/auth";
 
 export default function SubscribeScreen() {
   const [isPro, setPro] = useState(false);
@@ -39,6 +40,31 @@ export default function SubscribeScreen() {
 
   async function onSubscribe() {
     if (busy) return;
+
+    // ✅ Require account creation before subscribing
+    try {
+      const { data, error } = await getCurrentUser();
+      if (error) {
+        console.warn("getCurrentUser error", error);
+      }
+
+      if (!data?.user) {
+        Alert.alert(
+          "Account needed",
+          "After paying with PayPal, you must create an account (same email) to activate Pro.",
+          [
+            { text: "Create account", onPress: () => router.push("/signup") },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+        return;
+      }
+    } catch (e) {
+      console.warn("getCurrentUser unexpected error", e);
+      Alert.alert("Error", "Could not check account status. Please try again.");
+      return;
+    }
+
     setBusy(true);
 
     try {
