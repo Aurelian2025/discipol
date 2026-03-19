@@ -3,47 +3,28 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   View,
-  Platform,
 } from "react-native";
 
-import {
-  getIsPro,
-  purchaseProMonthly,
-  restoreProFromGooglePlay,
-} from "../src/subscription/subscription";
-import { getCurrentUser } from "../src/supabase/auth";
+import { supabase } from "../src/supabase/client";
+import { getIsPro } from "../src/subscription/subscription";
 
-type PurchasesType = typeof import("react-native-purchases").default;
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export default function SubscribeScreen() {
   const [isPro, setPro] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [priceText, setPriceText] = useState<string>("");
 
   useEffect(() => {
     (async () => {
       try {
         setPro(await getIsPro());
-
-        const restored = await restoreProFromGooglePlay();
-        setPro(restored);
-
-        // RevenueCat isn't available on web (Vercel builds web)
-        if (Platform.OS === "web") return;
-
-        const Purchases: PurchasesType = (await import("react-native-purchases"))
-          .default;
-
-        const offerings = await Purchases.getOfferings();
-        const monthlyPkg = offerings.current?.monthly;
-
-        if (monthlyPkg) {
-          setPriceText(monthlyPkg.product.priceString);
-        }
       } catch (e) {
         console.warn("init error", e);
       }
@@ -53,29 +34,6 @@ export default function SubscribeScreen() {
   async function onSubscribe() {
     if (busy) return;
 
-    // ✅ Require account creation before subscribing
-    try {
-      const { data, error } = await getCurrentUser();
-      if (error) console.warn("getCurrentUser error", error);
-
-      if (!data?.user) {
-        Alert.alert(
-          "Account needed",
-          "After paying with PayPal, you must create an account (same email) to activate Pro.",
-          [
-            { text: "Create account", onPress: () => router.push("/signup") },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
-        return;
-      }
-    } catch (e) {
-      console.warn("getCurrentUser unexpected error", e);
-      Alert.alert("Error", "Could not check account status. Please try again.");
-      return;
-    }
-
-    // Web safety
     if (Platform.OS === "web") {
       Alert.alert(
         "Not available on web",
@@ -87,33 +45,77 @@ export default function SubscribeScreen() {
     setBusy(true);
 
     try {
-      await purchaseProMonthly();
+      // Get current user session (if any) to pass email to PayPal
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      const pro = await getIsPro();
-      setPro(pro);
+      const email = user?.email;
 
-      if (pro) {
-        Alert.alert("Success 🎉", "Pro unlocked!");
-        router.back();
-      } else {
+      // Call Supabase Edge Function to create a PayPal subscription
+      const res = await fetch(
+        `${SUPABASE_URL}/functions/v1/paypal-create-subscription`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            return_url: "discipol://paypal-return",
+            cancel_url: "discipol://paypal-cancel",
+            ...(email ? { email } : {}),
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error ?? "Failed to start checkout");
+      }
+
+      const { approval_url } = await res.json();
+
+      if (!approval_url) {
+        throw new Error("No approval URL returned");
+      }
+
+      // Open PayPal checkout in the device browser
+      await Linking.openURL(approval_url);
+
+      // After the browser opens, inform the user of next steps
+      if (email) {
+        // User is already signed in — just let them know Pro will activate
         Alert.alert(
-          "Purchase incomplete",
-          "Purchase finished but Pro was not unlocked."
+          "PayPal checkout opened",
+          "After completing payment, Pro will be activated on your account automatically.",
+          [{ text: "OK", style: "default" }]
+        );
+      } else {
+        // User is not signed in — they need to create an account with the same email
+        Alert.alert(
+          "PayPal checkout opened",
+          "After completing payment, create an account using the same email you used with PayPal to activate Pro.",
+          [
+            {
+              text: "Create account",
+              onPress: () => router.push("/signup"),
+            },
+            { text: "I already have an account", onPress: () => router.push("/login") },
+            { text: "Later", style: "cancel" },
+          ]
         );
       }
     } catch (e: any) {
-      console.warn("purchase error", e);
-      Alert.alert("Purchase error", e?.message || "Purchase failed");
+      console.warn("subscribe error", e);
+      Alert.alert("Checkout error", e?.message || "Could not start checkout");
     } finally {
       setBusy(false);
     }
   }
 
-  const subscribeLabel = busy
-    ? "Please wait…"
-    : priceText
-    ? `Subscribe — ${priceText} / month`
-    : "Subscribe";
+  const subscribeLabel = busy ? "Please wait…" : "Subscribe";
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
@@ -138,7 +140,7 @@ export default function SubscribeScreen() {
         </Text>
 
         <Text style={{ color: "#444", fontSize: 16 }}>
-          Subscription billed monthly via Google Play. Cancel anytime.
+          Subscription billed monthly via PayPal. Cancel anytime.
         </Text>
 
         {Platform.OS === "web" ? (

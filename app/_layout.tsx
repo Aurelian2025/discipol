@@ -18,6 +18,9 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ title: "Sign in" }} />
         <Stack.Screen name="signup" options={{ title: "Create account" }} />
 
+        {/* PayPal return / cancel deep link handlers */}
+        <Stack.Screen name="paypal-return" options={{ title: "Payment received" }} />
+
         <Stack.Screen name="review" options={{ title: "30-Day Review" }} />
         <Stack.Screen name="admin" options={{ title: "Admin" }} />
         <Stack.Screen
