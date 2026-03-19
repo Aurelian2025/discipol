@@ -28,7 +28,8 @@ function json(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json({ ok: true }, { status: 200 });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, { status: 405 });
+  if (req.method !== "POST")
+    return json({ error: "Method not allowed" }, { status: 405 });
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -42,18 +43,17 @@ Deno.serve(async (req) => {
 
     // 1) User-authenticated client (to read auth context)
     const authHeader = req.headers.get("Authorization") ?? "";
-    const supabaseUser = createClient(
-      supabaseUrl,
-      // anon key isn't needed here; we only use it to validate JWT via auth.getUser()
-      // But createClient requires a key. We'll use service role but NOT for user-context.
-      // We will still validate the user via auth.getUser(jwt).
-      serviceRoleKey,
-      {
-        global: { headers: { Authorization: authHeader } },
-      }
-    );
+    if (!authHeader) {
+      return json({ error: "Missing Authorization header" }, { status: 401 });
+    }
 
-    const { data: userData, error: userErr } = await supabaseUser.auth.getUser();
+    const supabaseUser = createClient(supabaseUrl, serviceRoleKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: userData, error: userErr } =
+      await supabaseUser.auth.getUser();
+
     if (userErr || !userData?.user?.id) {
       return json({ error: "Not authenticated" }, { status: 401 });
     }
@@ -64,15 +64,15 @@ Deno.serve(async (req) => {
       return json({ error: "User email missing" }, { status: 400 });
     }
 
-    // 2) Admin client for DB writes (service role bypasses RLS)
+    // 2) Admin client for DB reads/writes (service role bypasses RLS)
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Find the most recent ACTIVE checkout for this email
+    // ✅ Only accept normalized ACTIVE rows
     const { data: checkout, error: checkoutErr } = await supabaseAdmin
       .from("paypal_checkouts")
       .select("id,email,status,paypal_subscription_id")
       .eq("email", email)
-      .in("status", ["ACTIVE", "BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.RE-ACTIVATED"])
+      .eq("status", "ACTIVE")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
