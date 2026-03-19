@@ -1,7 +1,7 @@
 // supabase/functions/paypal-webhook/index.ts
 //
 // PayPal webhook handler for subscription lifecycle events.
-// Verifies webhook signature, then updates paypal_checkouts + user_entitlements.
+// Verifies webhook signature, then updates paypal_checkouts.
 //
 // Required env vars (Supabase -> Edge Functions secrets):
 // - SUPABASE_URL
@@ -12,10 +12,9 @@
 // - PAYPAL_WEBHOOK_ID
 //
 // Notes:
-// - We use PayPal's /v1/notifications/verify-webhook-signature endpoint,
-//   same pattern as your prep-test-g1 app.
-// - Because this app is "pay then signup", the webhook only updates paypal_checkouts.
-// - Entitlements are applied to a user_id when they sign in (we'll add a small linking step).
+// - Uses PayPal's /v1/notifications/verify-webhook-signature endpoint.
+// - This app is "pay then signup", so the webhook updates paypal_checkouts only.
+// - Entitlements are applied to a user_id when they sign in via paypal-claim-entitlement.
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -38,7 +37,9 @@ function json(
 async function getPayPalAccessToken(paypalBase: string) {
   const clientId = Deno.env.get("PAYPAL_CLIENT_ID");
   const secret = Deno.env.get("PAYPAL_SECRET");
-  if (!clientId || !secret) throw new Error("Missing PAYPAL_CLIENT_ID or PAYPAL_SECRET");
+  if (!clientId || !secret) {
+    throw new Error("Missing PAYPAL_CLIENT_ID or PAYPAL_SECRET");
+  }
 
   const auth = btoa(`${clientId}:${secret}`);
 
@@ -53,7 +54,9 @@ async function getPayPalAccessToken(paypalBase: string) {
 
   const tokenData = await tokenRes.json();
   if (!tokenRes.ok) {
-    throw new Error(`Failed to get PayPal access token: ${JSON.stringify(tokenData)}`);
+    throw new Error(
+      `Failed to get PayPal access token: ${JSON.stringify(tokenData)}`
+    );
   }
   return tokenData.access_token as string;
 }
@@ -112,7 +115,7 @@ async function verifyPayPalWebhook({
   return { verified: verifyData?.verification_status === "SUCCESS", verifyData };
 }
 
-function mapEventToStatus(eventType: string) {
+function mapEventToNormalizedStatus(eventType: string) {
   const activeTypes = new Set([
     "BILLING.SUBSCRIPTION.ACTIVATED",
     "BILLING.SUBSCRIPTION.RE-ACTIVATED",
@@ -131,7 +134,8 @@ function mapEventToStatus(eventType: string) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return json({ ok: true }, { status: 200 });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, { status: 405 });
+  if (req.method !== "POST")
+    return json({ error: "Method not allowed" }, { status: 405 });
 
   try {
     const rawBody = await req.text();
@@ -154,21 +158,31 @@ Deno.serve(async (req) => {
     const eventType = String(event?.event_type ?? "");
     const resource = event?.resource ?? {};
 
-    const checkoutId = resource?.custom_id; // we set this to paypal_checkouts.id
+    const checkoutId = resource?.custom_id; // paypal_checkouts.id (uuid)
     const subscriptionId = resource?.id ?? null;
 
     if (!eventType) return json({ error: "Missing event_type" }, { status: 400 });
-    if (!checkoutId) return json({ error: "Missing custom_id (checkout id)" }, { status: 400 });
+    if (!checkoutId) {
+      return json(
+        { error: "Missing custom_id (checkout id)" },
+        { status: 400 }
+      );
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !serviceRoleKey) {
-      return json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }, { status: 500 });
+      return json(
+        { error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" },
+        { status: 500 }
+      );
     }
 
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const mapped = mapEventToStatus(eventType);
+    // ✅ Normalize status stored in DB
+    // ACTIVE | INACTIVE | IGNORED
+    const normalizedStatus = mapEventToNormalizedStatus(eventType);
 
     // Always store raw webhook for debugging
     const { error: updErr } = await supabaseAdmin
@@ -176,12 +190,7 @@ Deno.serve(async (req) => {
       .update({
         raw_last_webhook: event,
         paypal_subscription_id: subscriptionId,
-        status:
-          mapped === "ACTIVE"
-            ? "ACTIVE"
-            : mapped === "INACTIVE"
-              ? eventType
-              : "IGNORED",
+        status: normalizedStatus,
       })
       .eq("id", checkoutId);
 
