@@ -47,6 +47,8 @@ const FREE_TRIAL_DAYS = 2;
 const REQUIRED_CUSTOM_TASKS_PER_DAY = 5;
 
 // ✅ Admin auth (fixed + clean)
+// NOTE: Admin unlock is purely local (AsyncStorage). It has nothing to do with PayPal / Supabase.
+// It is intended only for you, as an internal unlock on your device.
 const ADMIN_PASSWORD = "Lucas2";
 const ADMIN_KEY = "discipol.admin.unlocked";
 
@@ -331,6 +333,32 @@ export default function TodayScreen() {
     Alert.alert("Admin unlocked", "All content unlocked on this device.");
   }
 
+  async function lockAdmin() {
+    Alert.alert(
+      "Lock admin?",
+      "This will re-lock Pro features on this device (unless the account is Pro).",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Lock",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(ADMIN_KEY);
+              setAdminUnlocked(false);
+              setAdminPasswordDraft("");
+              setAdminModalOpen(false);
+              Alert.alert("Locked", "Admin unlock removed for this device.");
+            } catch (e) {
+              console.warn("lockAdmin error", e);
+              Alert.alert("Error", "Could not lock admin.");
+            }
+          },
+        },
+      ]
+    );
+  }
+
   if (activePlans === null) {
     return (
       <View style={{ padding: 16 }}>
@@ -402,7 +430,7 @@ export default function TodayScreen() {
           </Pressable>
         )}
 
-        {/* ✅ ADMIN BUTTON */}
+        {/* ✅ ADMIN BUTTON (hidden-ish; local device unlock only, not PayPal) */}
         <Pressable
           onPress={() => setAdminModalOpen(true)}
           style={{ alignSelf: "flex-start" }}
@@ -450,15 +478,12 @@ export default function TodayScreen() {
             ? (builtDay?.tasks?.map((t) => t.text) ?? [])
             : customTasksForDay;
 
-          const affirmation = builtIn
-            ? (builtDay?.affirmation ?? "")
-            : CUSTOM_AFFIRMATION;
+          const affirmation = builtIn ? (builtDay?.affirmation ?? "") : CUSTOM_AFFIRMATION;
 
           const totalTasksForDay = tasksText.length;
 
           const dayState = p.days?.[p.currentDay];
-          const checked =
-            dayState?.tasksChecked ?? Array(totalTasksForDay).fill(false);
+          const checked = dayState?.tasksChecked ?? Array(totalTasksForDay).fill(false);
           const notes = dayState?.notesByTaskIndex ?? {};
 
           const { done, total, allDone } = countCompletedTasks(p, totalTasksForDay);
@@ -506,9 +531,7 @@ export default function TodayScreen() {
                 </View>
               ) : (
                 <>
-                  <Text style={{ fontStyle: "italic", color: "#333" }}>
-                    {affirmation}
-                  </Text>
+                  <Text style={{ fontStyle: "italic", color: "#333" }}>{affirmation}</Text>
 
                   {needsCustomTasks && (
                     <View style={{ gap: 10 }}>
@@ -516,25 +539,23 @@ export default function TodayScreen() {
                         Write your 5 tasks for today (required):
                       </Text>
 
-                      {padToFive(draftByPlanId[p.planId] ?? customTasksForDay).map(
-                        (val, idx) => (
-                          <TextInput
-                            key={`${p.planId}-${idx}`}
-                            value={val}
-                            onChangeText={(t) => setDraftLine(p.planId, idx, t)}
-                            placeholder={`Task ${idx + 1}`}
-                            style={{
-                              borderWidth: 1,
-                              borderColor: "#ccc",
-                              borderRadius: 12,
-                              paddingHorizontal: 12,
-                              paddingVertical: 10,
-                              fontSize: 16,
-                              backgroundColor: "white",
-                            }}
-                          />
-                        )
-                      )}
+                      {padToFive(draftByPlanId[p.planId] ?? customTasksForDay).map((val, idx) => (
+                        <TextInput
+                          key={`${p.planId}-${idx}`}
+                          value={val}
+                          onChangeText={(t) => setDraftLine(p.planId, idx, t)}
+                          placeholder={`Task ${idx + 1}`}
+                          style={{
+                            borderWidth: 1,
+                            borderColor: "#ccc",
+                            borderRadius: 12,
+                            paddingHorizontal: 12,
+                            paddingVertical: 10,
+                            fontSize: 16,
+                            backgroundColor: "white",
+                          }}
+                        />
+                      ))}
 
                       <Pressable
                         onPress={() => saveCustomTasksForToday(p.planId, p.currentDay)}
@@ -685,63 +706,112 @@ export default function TodayScreen() {
                 >
                   <Text style={{ fontSize: 18, fontWeight: "900" }}>Admin</Text>
 
-                  <Text style={{ color: "#444" }}>
-                    Enter password to unlock everything on this device.
-                  </Text>
+                  {adminUnlocked ? (
+                    <>
+                      <Text style={{ color: "#444" }}>
+                        Admin is currently unlocked on this device.
+                      </Text>
 
-                  <TextInput
-                    value={adminPasswordDraft}
-                    onChangeText={setAdminPasswordDraft}
-                    placeholder="Password"
-                    secureTextEntry
-                    autoCapitalize="none"
-                    style={{
-                      borderWidth: 1,
-                      borderColor: "#ddd",
-                      borderRadius: 12,
-                      paddingHorizontal: 12,
-                      paddingVertical: 10,
-                      fontSize: 16,
-                      backgroundColor: "white",
-                    }}
-                  />
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 10,
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <Pressable
+                          onPress={() => {
+                            setAdminPasswordDraft("");
+                            setAdminModalOpen(false);
+                          }}
+                          style={{
+                            paddingVertical: 10,
+                            paddingHorizontal: 14,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#999",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "900" }}>Close</Text>
+                        </Pressable>
 
-                  <View
-                    style={{
-                      flexDirection: "row",
-                      gap: 10,
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <Pressable
-                      onPress={() => {
-                        setAdminPasswordDraft("");
-                        setAdminModalOpen(false);
-                      }}
-                      style={{
-                        paddingVertical: 10,
-                        paddingHorizontal: 14,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: "#999",
-                      }}
-                    >
-                      <Text style={{ fontWeight: "900" }}>Cancel</Text>
-                    </Pressable>
+                        <Pressable
+                          onPress={lockAdmin}
+                          style={{
+                            paddingVertical: 10,
+                            paddingHorizontal: 14,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#B00020",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "900", color: "#B00020" }}>
+                            Lock
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Text style={{ color: "#444" }}>
+                        Enter password to unlock everything on this device.
+                      </Text>
 
-                    <Pressable
-                      onPress={tryAdminUnlock}
-                      style={{
-                        paddingVertical: 10,
-                        paddingHorizontal: 14,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: "#111",
-                      }}
-                    >
-                      <Text style={{ fontWeight: "900" }}>Unlock</Text>
-                    </Pressable>
-                  </View>
+                      <TextInput
+                        value={adminPasswordDraft}
+                        onChangeText={setAdminPasswordDraft}
+                        placeholder="Password"
+                        secureTextEntry
+                        autoCapitalize="none"
+                        style={{
+                          borderWidth: 1,
+                          borderColor: "#ddd",
+                          borderRadius: 12,
+                          paddingHorizontal: 12,
+                          paddingVertical: 10,
+                          fontSize: 16,
+                          backgroundColor: "white",
+                        }}
+                      />
+
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 10,
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <Pressable
+                          onPress={() => {
+                            setAdminPasswordDraft("");
+                            setAdminModalOpen(false);
+                          }}
+                          style={{
+                            paddingVertical: 10,
+                            paddingHorizontal: 14,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#999",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "900" }}>Cancel</Text>
+                        </Pressable>
+
+                        <Pressable
+                          onPress={tryAdminUnlock}
+                          style={{
+                            paddingVertical: 10,
+                            paddingHorizontal: 14,
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#111",
+                          }}
+                        >
+                          <Text style={{ fontWeight: "900" }}>Unlock</Text>
+                        </Pressable>
+                      </View>
+                    </>
+                  )}
                 </View>
               </TouchableWithoutFeedback>
             </View>
@@ -763,7 +833,13 @@ export default function TodayScreen() {
                 keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 0}
               >
                 <TouchableWithoutFeedback onPress={() => {}} accessible={false}>
-                  <View style={{ marginTop: 24, paddingHorizontal: 16, width: "100%" }}>
+                  <View
+                    style={{
+                      marginTop: 24,
+                      paddingHorizontal: 16,
+                      width: "100%",
+                    }}
+                  >
                     <View
                       style={{
                         backgroundColor: "#fffdfb",
@@ -854,7 +930,10 @@ export default function TodayScreen() {
                         <Pressable
                           onPress={() => {
                             if (!canSaveFeedback) {
-                              Alert.alert("Too short", "Please write 1 short sentence.");
+                              Alert.alert(
+                                "Too short",
+                                "Please write 1 short sentence."
+                              );
                               return;
                             }
                             saveNoteAndMaybeToggle();
