@@ -371,7 +371,35 @@ export default function TodayScreen() {
     return (
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+
+        {/* Header row: Today (left) + Subscribe (right) */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+
+          {!effectivePro && (
+            <Pressable
+              onPress={() => router.push("/subscribe")}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "#ddd",
+                backgroundColor: "white",
+              }}
+            >
+              <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+            </Pressable>
+          )}
+        </View>
+
         <Text style={{ color: "#444" }}>
           You haven’t started any areas yet. Go to Explore and choose an area.
         </Text>
@@ -403,7 +431,34 @@ export default function TodayScreen() {
       >
         <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+        {/* Header row: Today (left) + Subscribe (right) */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+
+          {!effectivePro && (
+            <Pressable
+              onPress={() => router.push("/subscribe")}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "#ddd",
+                backgroundColor: "white",
+              }}
+            >
+              <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+            </Pressable>
+          )}
+        </View>
+
         <Text style={{ color: "#444" }}>
           Calendar date: {todayKey()} • One day at a time • No skipping ahead
         </Text>
@@ -478,12 +533,15 @@ export default function TodayScreen() {
             ? (builtDay?.tasks?.map((t) => t.text) ?? [])
             : customTasksForDay;
 
-          const affirmation = builtIn ? (builtDay?.affirmation ?? "") : CUSTOM_AFFIRMATION;
+          const affirmation = builtIn
+            ? builtDay?.affirmation ?? ""
+            : CUSTOM_AFFIRMATION;
 
           const totalTasksForDay = tasksText.length;
 
           const dayState = p.days?.[p.currentDay];
-          const checked = dayState?.tasksChecked ?? Array(totalTasksForDay).fill(false);
+          const checked =
+            dayState?.tasksChecked ?? Array(totalTasksForDay).fill(false);
           const notes = dayState?.notesByTaskIndex ?? {};
 
           const { done, total, allDone } = countCompletedTasks(p, totalTasksForDay);
@@ -512,8 +570,8 @@ export default function TodayScreen() {
                   </Text>
 
                   <Text style={{ color: "#444", lineHeight: 20 }}>
-                    You’ve completed the free {FREE_TRIAL_DAYS}-day trial for this area. Subscribe
-                    to unlock all 30 days — and Build your own.
+                    You’ve completed the free {FREE_TRIAL_DAYS}-day trial for this
+                    area. Subscribe to unlock all 30 days — and Build your own.
                   </Text>
 
                   <Pressable
@@ -531,7 +589,9 @@ export default function TodayScreen() {
                 </View>
               ) : (
                 <>
-                  <Text style={{ fontStyle: "italic", color: "#333" }}>{affirmation}</Text>
+                  <Text style={{ fontStyle: "italic", color: "#333" }}>
+                    {affirmation}
+                  </Text>
 
                   {needsCustomTasks && (
                     <View style={{ gap: 10 }}>
@@ -539,23 +599,25 @@ export default function TodayScreen() {
                         Write your 5 tasks for today (required):
                       </Text>
 
-                      {padToFive(draftByPlanId[p.planId] ?? customTasksForDay).map((val, idx) => (
-                        <TextInput
-                          key={`${p.planId}-${idx}`}
-                          value={val}
-                          onChangeText={(t) => setDraftLine(p.planId, idx, t)}
-                          placeholder={`Task ${idx + 1}`}
-                          style={{
-                            borderWidth: 1,
-                            borderColor: "#ccc",
-                            borderRadius: 12,
-                            paddingHorizontal: 12,
-                            paddingVertical: 10,
-                            fontSize: 16,
-                            backgroundColor: "white",
-                          }}
-                        />
-                      ))}
+                      {padToFive(draftByPlanId[p.planId] ?? customTasksForDay).map(
+                        (val, idx) => (
+                          <TextInput
+                            key={`${p.planId}-${idx}`}
+                            value={val}
+                            onChangeText={(t) => setDraftLine(p.planId, idx, t)}
+                            placeholder={`Task ${idx + 1}`}
+                            style={{
+                              borderWidth: 1,
+                              borderColor: "#ccc",
+                              borderRadius: 12,
+                              paddingHorizontal: 12,
+                              paddingVertical: 10,
+                              fontSize: 16,
+                              backgroundColor: "white",
+                            }}
+                          />
+                        )
+                      )}
 
                       <Pressable
                         onPress={() => saveCustomTasksForToday(p.planId, p.currentDay)}
@@ -626,7 +688,12 @@ export default function TodayScreen() {
                                   <Text>{text}</Text>
 
                                   {!!note && (
-                                    <Text style={{ color: "#444", fontStyle: "italic" }}>
+                                    <Text
+                                      style={{
+                                        color: "#444",
+                                        fontStyle: "italic",
+                                      }}
+                                    >
                                       “{note}”
                                     </Text>
                                   )}
@@ -665,7 +732,9 @@ export default function TodayScreen() {
                         }}
                       >
                         <Text style={{ fontWeight: "900" }}>
-                          {allDone ? "Completed for today" : "End of day / Save progress"}
+                          {allDone
+                            ? "Completed for today"
+                            : "End of day / Save progress"}
                         </Text>
                       </Pressable>
                     </>
@@ -930,10 +999,7 @@ export default function TodayScreen() {
                         <Pressable
                           onPress={() => {
                             if (!canSaveFeedback) {
-                              Alert.alert(
-                                "Too short",
-                                "Please write 1 short sentence."
-                              );
+                              Alert.alert("Too short", "Please write 1 short sentence.");
                               return;
                             }
                             saveNoteAndMaybeToggle();
