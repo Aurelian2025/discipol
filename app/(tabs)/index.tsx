@@ -7,7 +7,9 @@ export default function HomeScreen() {
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
-
+<Text style={{ color: "red", fontWeight: "900", fontSize: 18 }}>
+  MARKER: HOME UPDATED
+</Text>
       {/* Header row: How it works (left) + Subscribe (right) */}
       <View
         style={{
