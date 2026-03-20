@@ -3,7 +3,10 @@ import React, { useMemo } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 
 import AppHeader from "../../src/components/AppHeader";
-import { CATEGORIES, plansByCategory } from "../../src/data/selfImprovementPlans.v1";
+import {
+  CATEGORIES,
+  plansByCategory,
+} from "../../src/data/selfImprovementPlans.v1";
 
 export default function ExploreScreen() {
   const safeCategories = useMemo(
@@ -28,7 +31,31 @@ export default function ExploreScreen() {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
       <AppHeader />
 
-      <Text style={{ fontSize: 22, fontWeight: "900" }}>Categories</Text>
+      {/* Header row: Categories (left) + Subscribe (right) */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>Categories</Text>
+
+        <Pressable
+          onPress={() => router.push("/subscribe")}
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: "#ddd",
+            backgroundColor: "white",
+          }}
+        >
+          <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+        </Pressable>
+      </View>
 
       <View style={{ gap: 12 }}>
         {safeCategories.map((cat) => {
