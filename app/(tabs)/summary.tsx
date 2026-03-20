@@ -99,20 +99,44 @@ export default function SummaryScreen() {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       <AppHeader />
 
-      <Pressable
-        onPress={() => router.push("/review")}
+      {/* Row: View your progress (left) + Subscribe (right) */}
+      <View
         style={{
-          alignSelf: "flex-start",
-          paddingVertical: 10,
-          paddingHorizontal: 12,
-          borderRadius: 12,
-          borderWidth: 2,
-          borderColor: "#e7b8a5",
-          backgroundColor: "#fff7f2",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
         }}
       >
-        <Text style={{ fontWeight: "900" }}>View your progress →</Text>
-      </Pressable>
+        <Pressable
+          onPress={() => router.push("/review")}
+          style={{
+            alignSelf: "flex-start",
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            borderRadius: 12,
+            borderWidth: 2,
+            borderColor: "#e7b8a5",
+            backgroundColor: "#fff7f2",
+          }}
+        >
+          <Text style={{ fontWeight: "900" }}>View your progress →</Text>
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push("/subscribe")}
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: "#ddd",
+            backgroundColor: "white",
+          }}
+        >
+          <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+        </Pressable>
+      </View>
 
       <View style={{ flexDirection: "row", gap: 10 }}>
         <View

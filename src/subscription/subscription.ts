@@ -1,87 +1,81 @@
 // src/subscription/subscription.ts
+//
+// ✅ PayPal + Supabase entitlements version
+// - Pro status is derived from Supabase (user_entitlements) when signed in
+// - Admin unlock stays separate (handled elsewhere via AsyncStorage key: discipol.admin.unlocked)
+// - Optional dev bypass: EXPO_PUBLIC_PAYMENTS_MODE=test forces Pro ON for quick testing
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Purchases, { LOG_LEVEL } from "react-native-purchases";
+import { supabase } from "../supabase/client";
 
-const IS_PRO_KEY = "discipol.isPro";
+const PAYMENTS_MODE = process.env.EXPO_PUBLIC_PAYMENTS_MODE ?? "paypal";
 
-// MUST match the Entitlement ID in RevenueCat
-const ENTITLEMENT_ID = "pro";
-
-// Set EXPO_PUBLIC_PAYMENTS_MODE=test to bypass RevenueCat (e.g. on Vercel)
-const PAYMENTS_MODE = process.env.EXPO_PUBLIC_PAYMENTS_MODE ?? "revenuecat";
-
-let configured = false;
-
-async function configure() {
-  if (configured) return;
-
-  Purchases.setLogLevel(LOG_LEVEL.VERBOSE);
-
-  const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY;
-  if (!apiKey) {
-    throw new Error("Missing EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY");
-  }
-
-  Purchases.configure({ apiKey });
-
-  // 🔑 Force-refresh cached customer + offerings (safe, one-time)
-  await Purchases.invalidateCustomerInfoCache();
-  await Purchases.getOfferings();
-
-  Purchases.addCustomerInfoUpdateListener(async (info) => {
-    const isPro = Boolean(info.entitlements.active[ENTITLEMENT_ID]);
-    await AsyncStorage.setItem(IS_PRO_KEY, isPro ? "true" : "false");
-  });
-
-  configured = true;
-}
-
+/**
+ * Returns whether the current signed-in user is Pro.
+ *
+ * Source of truth:
+ * - Supabase table: public.user_entitlements (row keyed by user_id)
+ *
+ * Dev override:
+ * - If EXPO_PUBLIC_PAYMENTS_MODE === "test", return true
+ */
 export async function getIsPro(): Promise<boolean> {
-  const raw = await AsyncStorage.getItem(IS_PRO_KEY);
-  return raw === "true";
+  if (PAYMENTS_MODE === "test") return true;
+
+  try {
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr) {
+      console.warn("getIsPro getUser error", userErr);
+      return false;
+    }
+
+    const user = userData?.user;
+    if (!user?.id) return false;
+
+    const { data, error } = await supabase
+      .from("user_entitlements")
+      .select("is_pro")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (error) {
+      // If table isn't deployed yet or RLS blocks, we don't want to crash the app.
+      console.warn("getIsPro user_entitlements query error", error);
+      return false;
+    }
+
+    return Boolean(data?.is_pro);
+  } catch (e) {
+    console.warn("getIsPro unexpected error", e);
+    return false;
+  }
 }
 
-export async function setIsPro(value: boolean): Promise<void> {
-  await AsyncStorage.setItem(IS_PRO_KEY, value ? "true" : "false");
-}
-
+/**
+ * Kept for backwards compatibility with existing imports.
+ * With PayPal, "restore" is just "re-check Supabase status".
+ */
 export async function restoreProFromGooglePlay(): Promise<boolean> {
-  if (PAYMENTS_MODE === "test") {
-    // In test mode, just re-read the locally stored value — no RevenueCat call
-    return getIsPro();
-  }
-
-  await configure();
-
-  const info = await Purchases.restorePurchases();
-  const isPro = Boolean(info.entitlements.active[ENTITLEMENT_ID]);
-
-  await setIsPro(isPro);
-  return isPro;
+  return getIsPro();
 }
 
+/**
+ * Kept for backwards compatibility with existing imports.
+ * With PayPal, purchases happen via app/subscribe.tsx (Edge Function + PayPal approval URL),
+ * so this function intentionally throws to avoid accidental RevenueCat usage.
+ */
 export async function purchaseProMonthly(): Promise<void> {
-  if (PAYMENTS_MODE === "test") {
-    // In test mode, immediately unlock Pro without hitting RevenueCat
-    await setIsPro(true);
-    return;
-  }
-
-  await configure();
-
-  const offerings = await Purchases.getOfferings();
-  const monthlyPkg = offerings.current?.monthly;
-
-  if (!monthlyPkg) {
-    throw new Error("Monthly package not found in current RevenueCat offering");
-  }
-
-  const result = await Purchases.purchasePackage(monthlyPkg);
-
-  const isPro = Boolean(
-    result.customerInfo.entitlements.active[ENTITLEMENT_ID]
+  throw new Error(
+    "purchaseProMonthly is not supported (PayPal flow). Use /subscribe screen to purchase."
   );
+}
 
-  await setIsPro(isPro);
+/**
+ * Kept only to avoid breaking any legacy call sites (if any exist).
+ * If you still call setIsPro somewhere, we prefer NOT to persist local Pro state anymore,
+ * because Supabase is the source of truth.
+ *
+ * We keep a no-op implementation instead of deleting it, so existing code compiles.
+ */
+export async function setIsPro(_value: boolean): Promise<void> {
+  // no-op by design
 }

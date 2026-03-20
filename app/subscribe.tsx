@@ -1,92 +1,174 @@
 // app/subscribe.tsx
+//
+// ✅ PayPal flow (pay first → then signup/signin to activate Pro)
+// - Starts PayPal checkout via Supabase Edge Function
+// - After payment, user must create an account with the same email to activate Pro
+// - Pro entitlement is checked from Supabase (see src/subscription/subscription.ts)
+// - Admin unlock remains independent elsewhere (Today screen uses adminUnlocked override)
+
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, Text, View, Platform } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+
+import { getIsPro } from "../src/subscription/subscription";
 import { getCurrentUser } from "../src/supabase/auth";
+import { supabase } from "../src/supabase/client";
+
+type CreateCheckoutResponse = {
+  approval_url?: string;
+  checkout_id?: string;
+  error?: string;
+};
+
+function isValidEmail(email: string) {
+  const e = (email ?? "").trim();
+  // simple practical check
+  return e.includes("@") && e.includes(".");
+}
 
 export default function SubscribeScreen() {
   const [isPro, setPro] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [priceText, setPriceText] = useState<string>("");
+
+  // For pay-then-signup flow we ask for email if not logged in.
+  const [email, setEmail] = useState("");
+  const [prefilledEmail, setPrefilledEmail] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       try {
-        // ✅ RevenueCat isn’t available on web (Vercel builds web)
-        if (Platform.OS === "web") return;
+        setPro(await getIsPro());
 
-        const restored = await getIsPro();
-        setPro(restored);
+        // Prefill email if user is already logged in
+        const { data } = await getCurrentUser();
+        const userEmail = data?.user?.email ?? null;
+
+        if (userEmail) {
+          setEmail(userEmail);
+          setPrefilledEmail(userEmail);
+        }
       } catch (e) {
-        console.warn("init error", e);
+        console.warn("subscribe init error", e);
       }
     })();
   }, []);
 
-  async function onSubscribe() {
+  const subscribeLabel = useMemo(() => {
+    if (busy) return "Please wait…";
+    return "Subscribe with PayPal";
+  }, [busy]);
+
+  async function openSignupPrompt(afterMessage?: string) {
+    Alert.alert(
+      "Create account to activate Pro",
+      afterMessage ||
+        "After paying with PayPal, create an account using the same email to activate Pro.",
+      [
+        { text: "Create account", onPress: () => router.push("/signup") },
+        { text: "Sign in", onPress: () => router.push("/login") },
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  }
+
+  async function startPaypalCheckout() {
     if (busy) return;
 
-    // ✅ Require account creation before subscribing
-    try {
-      const { data, error } = await getCurrentUser();
-      if (error) console.warn("getCurrentUser error", error);
+    const trimmedEmail = email.trim().toLowerCase();
 
-      if (!data?.user) {
-        Alert.alert(
-          "Account needed",
-          "After paying with PayPal, you must create an account (same email) to activate Pro.",
-          [
-            { text: "Create account", onPress: () => router.push("/signup") },
-            { text: "Cancel", style: "cancel" },
-          ]
-        );
-        return;
-      }
-    } catch (e) {
-      console.warn("getCurrentUser unexpected error", e);
-      Alert.alert("Error", "Could not check account status. Please try again.");
-      return;
-    }
-
-    // Web safety
-    if (Platform.OS === "web") {
-      Alert.alert(
-        "Not available on web",
-        "Subscriptions are only available in the mobile app."
-      );
+    if (!isValidEmail(trimmedEmail)) {
+      Alert.alert("Email required", "Please enter a valid email for PayPal checkout.");
       return;
     }
 
     setBusy(true);
 
     try {
-      await purchaseProMonthly();
+      // Call Supabase Edge Function
+      // Function name: paypal-create-subscription
+      // Expected response: { approval_url, checkout_id }
+      const { data, error } = await supabase.functions.invoke<CreateCheckoutResponse>(
+        "paypal-create-subscription",
+        {
+          body: {
+            email: trimmedEmail,
+          },
+        }
+      );
 
-      const pro = await getIsPro();
-      setPro(!!pro);
-
-      if (pro) {
-        Alert.alert("Success 🎉", "Pro unlocked!");
-        router.back();
-      } else {
-        Alert.alert(
-          "Purchase incomplete",
-          "Purchase finished but Pro was not unlocked."
-        );
+      if (error) {
+        console.warn("paypal-create-subscription invoke error", error);
+        Alert.alert("Error", "Could not start PayPal checkout. Please try again.");
+        return;
       }
+
+      if (!data?.approval_url) {
+        console.warn("paypal-create-subscription bad response", data);
+        Alert.alert(
+          "Error",
+          data?.error || "Missing approval URL from PayPal."
+        );
+        return;
+      }
+
+      // On web, redirect directly to the PayPal approval URL
+      if (Platform.OS === "web") {
+        if (typeof window !== "undefined") {
+          window.location.href = data.approval_url;
+        }
+        return;
+      }
+
+      // On native, open via system browser / deep link
+      const canOpen = await Linking.canOpenURL(data.approval_url);
+      if (!canOpen) {
+        Alert.alert("Error", "Could not open PayPal checkout link.");
+        return;
+      }
+
+      await Linking.openURL(data.approval_url);
+
+      // After the user finishes in PayPal, they will come back to the app manually.
+      // We guide them to create an account / sign in to activate Pro.
+      await openSignupPrompt(
+        "After finishing payment in PayPal, come back here and create an account (same email) to activate Pro."
+      );
     } catch (e: any) {
-      console.warn("purchase error", e);
-      Alert.alert("Purchase error", e?.message || "Purchase failed");
+      console.warn("startPaypalCheckout error", e);
+      Alert.alert("Error", e?.message || "Could not start checkout.");
     } finally {
       setBusy(false);
     }
   }
 
-  const subscribeLabel = busy
-    ? "Please wait…"
-    : priceText
-    ? `Subscribe — ${priceText} / month`
-    : "Subscribe";
+  async function refreshStatus() {
+    try {
+      const pro = await getIsPro();
+      setPro(pro);
+
+      if (pro) {
+        Alert.alert("Pro active ✅", "Your Pro access is now active.");
+        router.back();
+      } else {
+        Alert.alert(
+          "Not active yet",
+          "If you paid, please sign up / sign in with the same email you used for PayPal, then tap Refresh."
+        );
+      }
+    } catch (e) {
+      console.warn("refreshStatus error", e);
+      Alert.alert("Error", "Could not refresh status.");
+    }
+  }
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 14 }}>
@@ -111,11 +193,34 @@ export default function SubscribeScreen() {
         </Text>
 
         <Text style={{ color: "#444", fontSize: 16 }}>
-          Subscription billed monthly via Google Play. Cancel anytime.
+          Subscription billed monthly via PayPal. Cancel anytime.
         </Text>
 
+        <View style={{ gap: 8, marginTop: 6 }}>
+          <Text style={{ fontWeight: "800" }}>Email for Pro activation</Text>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="you@example.com"
+            autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!busy && !prefilledEmail} // if logged in, don't let them mismatch
+            style={{
+              borderWidth: 1,
+              borderColor: "#ddd",
+              borderRadius: 12,
+              padding: 12,
+              backgroundColor: "white",
+              opacity: !busy && !prefilledEmail ? 1 : 0.7,
+            }}
+          />
+          <Text style={{ color: "#666", fontSize: 12 }}>
+            Use the same email when you create your Discipol account after paying.
+          </Text>
+        </View>
+
         <Pressable
-          onPress={onSubscribe}
+          onPress={startPaypalCheckout}
           disabled={busy}
           style={{
             paddingVertical: 12,
@@ -124,6 +229,7 @@ export default function SubscribeScreen() {
             borderWidth: 1,
             borderColor: "#111",
             opacity: busy ? 0.6 : 1,
+            marginTop: 6,
           }}
         >
           <Text style={{ fontWeight: "900", fontSize: 16 }}>
@@ -131,7 +237,31 @@ export default function SubscribeScreen() {
           </Text>
         </Pressable>
 
+        <Pressable
+          onPress={refreshStatus}
+          disabled={busy}
+          style={{
+            paddingVertical: 10,
+            borderRadius: 12,
+            alignItems: "center",
+            borderWidth: 1,
+            borderColor: "#999",
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          <Text style={{ fontWeight: "900" }}>Refresh status</Text>
+        </Pressable>
+
         {isPro && <Text style={{ fontWeight: "900" }}>Pro is active ✅</Text>}
+
+        <Pressable
+          onPress={() => openSignupPrompt()}
+          style={{ alignSelf: "flex-start", marginTop: 4 }}
+        >
+          <Text style={{ color: "#1E88E5", fontWeight: "800" }}>
+            Create account / Sign in
+          </Text>
+        </Pressable>
       </View>
 
       <Pressable
