@@ -8,7 +8,31 @@ export default function HomeScreen() {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
-      <Text style={{ fontSize: 22, fontWeight: "900" }}>How it works ✨</Text>
+      {/* Header row: How it works (left) + Subscribe (right) */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>How it works ✨</Text>
+
+        <Pressable
+          onPress={() => router.push("/subscribe")}
+          style={{
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: "#ddd",
+            backgroundColor: "white",
+          }}
+        >
+          <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+        </Pressable>
+      </View>
 
       <View
         style={{
@@ -34,7 +58,8 @@ export default function HomeScreen() {
         </Text>
         <Text style={{ fontSize: 16 }}>
           ⏳ You can stay on the same day{" "}
-          <Text style={{ fontWeight: "900" }}>as long as it takes</Text> — no pressure.
+          <Text style={{ fontWeight: "900" }}>as long as it takes</Text> — no
+          pressure.
         </Text>
       </View>
 
