@@ -90,18 +90,11 @@ export default function SubscribeScreen() {
       return;
     }
 
-    // Web safety (you can remove this later if you support web checkout)
-    if (Platform.OS === "web") {
-      Alert.alert(
-        "Not available on web",
-        "Subscriptions are only available in the mobile app."
-      );
-      return;
-    }
-
     setBusy(true);
 
     try {
+      console.log("[subscribe] starting PayPal checkout for", trimmedEmail);
+
       // Call Supabase Edge Function
       // Function name: paypal-create-subscription
       // Expected response: { approval_url, checkout_id }
@@ -110,7 +103,6 @@ export default function SubscribeScreen() {
         {
           body: {
             email: trimmedEmail,
-            // optional: app identifiers / deep links can be configured server-side too
           },
         }
       );
@@ -121,6 +113,8 @@ export default function SubscribeScreen() {
         return;
       }
 
+      console.log("[subscribe] edge function result", { checkout_id: data?.checkout_id, has_url: !!data?.approval_url });
+
       if (!data?.approval_url) {
         console.warn("paypal-create-subscription bad response", data);
         Alert.alert(
@@ -130,6 +124,16 @@ export default function SubscribeScreen() {
         return;
       }
 
+      if (Platform.OS === "web") {
+        // On web: redirect the browser tab to PayPal approval URL.
+        console.log("[subscribe] web: redirecting to PayPal approval URL");
+        if (typeof window !== "undefined" && window.location) {
+          window.location.assign(data.approval_url);
+        }
+        return;
+      }
+
+      // Native (iOS/Android): open PayPal in the system browser.
       const canOpen = await Linking.canOpenURL(data.approval_url);
       if (!canOpen) {
         Alert.alert("Error", "Could not open PayPal checkout link.");

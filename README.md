@@ -19,25 +19,31 @@ The `vercel.json` at the repo root handles everything automatically:
 
 **No manual build-settings changes are needed in the Vercel dashboard.**
 
-### Add the environment variable
+### Add environment variables
 
-To enable test mode (Subscribe button unlocks Pro immediately, no RevenueCat needed):
+The app requires two Supabase environment variables to be set in Vercel:
 
 1. Open your project on [vercel.com](https://vercel.com)
 2. Click **Settings** (top nav)
 3. Click **Environment Variables** (left sidebar)
-4. Add a new variable:
-   - **Name:** `EXPO_PUBLIC_PAYMENTS_MODE`
-   - **Value:** `test`
-   - **Environments:** ✅ Production (check all environments you want to test on)
-5. Click **Save**
+4. Add the following variables for **Production** (and **Preview** if needed):
+
+| Name | Where to find the value |
+|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | Supabase Dashboard → Project Settings → API → Project URL |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Project Settings → API → anon public |
+
+5. Click **Save** after each variable
 6. Go to **Deployments** and click **Redeploy** on the latest deployment
 
-After redeployment, visiting `/subscribe` will no longer 404, and clicking **Subscribe** will immediately unlock Pro.
+After redeployment, visiting `/subscribe` will redirect logged-in users to PayPal checkout.
 
 #### All supported environment variables
 
 | Variable | Value | Purpose |
 |---|---|---|
-| `EXPO_PUBLIC_PAYMENTS_MODE` | `test` | Bypass RevenueCat; clicking Subscribe unlocks Pro immediately. Omit (or set to any other value) to use RevenueCat. |
-| `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` | *(your key)* | Required only when `EXPO_PUBLIC_PAYMENTS_MODE` is not `test` |
+| `EXPO_PUBLIC_SUPABASE_URL` | `https://<project>.supabase.co` | **Required.** Supabase project URL. Get it from Supabase → Project Settings → API → Project URL. |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | *(your anon/public key)* | **Required.** Supabase anonymous key (safe for client apps). Get it from Supabase → Project Settings → API → anon public. |
+| `EXPO_PUBLIC_PAYMENTS_MODE` | `test` | Optional. Bypass PayPal; clicking Subscribe unlocks Pro immediately. Omit (or set to any other value) to use PayPal via Supabase Edge Functions. |
+
+> **Note:** PayPal secrets (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, etc.) must be stored as **Supabase Edge Function secrets**, not as Vercel env vars. They are never exposed to the browser.
