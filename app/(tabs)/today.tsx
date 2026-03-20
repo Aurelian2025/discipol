@@ -334,31 +334,12 @@ export default function TodayScreen() {
   }
 
   async function lockAdmin() {
-    Alert.alert(
-      "Lock admin?",
-      "This will re-lock Pro features on this device (unless the account is Pro).",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Lock",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await AsyncStorage.removeItem(ADMIN_KEY);
-              setAdminUnlocked(false);
-              setAdminPasswordDraft("");
-              setAdminModalOpen(false);
-              Alert.alert("Locked", "Admin unlock removed for this device.");
-            } catch (e) {
-              console.warn("lockAdmin error", e);
-              Alert.alert("Error", "Could not lock admin.");
-            }
-          },
-        },
-      ]
-    );
-  }
-
+  await AsyncStorage.removeItem(ADMIN_KEY);
+  setAdminUnlocked(false);
+  setAdminPasswordDraft("");
+  setAdminModalOpen(false);
+  Alert.alert("Locked", "Admin unlock removed for this device.");
+}
   if (activePlans === null) {
     return (
       <View style={{ padding: 16 }}>
