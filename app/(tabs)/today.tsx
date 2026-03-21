@@ -1,4 +1,3 @@
-
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -40,12 +39,11 @@ import { getIsPro } from "../../src/subscription/subscription";
 const CUSTOM_AFFIRMATION =
   "Write your own tasks for today! Once completed, you will go tomorrow to brand new tasks you will choose.";
 
-// ✅ Free days = 2 (Day 1–2 free, Day 3+ requires subscription)
+// Free days = 2 (Day 1–2 free, Day 3+ requires subscription)
 const FREE_TRIAL_DAYS = 2;
-
 const REQUIRED_CUSTOM_TASKS_PER_DAY = 5;
 
-// ✅ Admin auth (local only)
+// Admin auth (local only)
 const ADMIN_PASSWORD = "Lucas2";
 const ADMIN_KEY = "discipol.admin.unlocked";
 
@@ -344,13 +342,14 @@ export default function TodayScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
+        {/* --- HEADER ROW FOR EMPTY STATE --- */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
-            marginBottom: 4,
+            marginBottom: 10,
           }}
         >
           <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
@@ -359,18 +358,19 @@ export default function TodayScreen() {
               onPress={() => router.push("/subscribe")}
               style={{
                 paddingVertical: 8,
-                paddingHorizontal: 12,
+                paddingHorizontal: 16,
                 borderRadius: 999,
                 borderWidth: 1,
-                borderColor: "#ddd",
+                borderColor: "#1E88E5",
                 backgroundColor: "white",
               }}
             >
-              <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+              <Text style={{ fontWeight: "900", color: "#1E88E5" }}>
+                Subscribe
+              </Text>
             </Pressable>
           )}
         </View>
-
         <Text style={{ color: "#444" }}>
           You haven’t started any areas yet. Go to Explore and choose an area.
         </Text>
@@ -398,14 +398,14 @@ export default function TodayScreen() {
       >
         <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
-        {/* Header row: Today (left) + Subscribe (right) */}
+        {/* --- HEADER ROW ON MAIN TODAY SCREEN --- */}
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
-            marginBottom: 4,
+            marginBottom: 10,
           }}
         >
           <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
@@ -414,14 +414,16 @@ export default function TodayScreen() {
               onPress={() => router.push("/subscribe")}
               style={{
                 paddingVertical: 8,
-                paddingHorizontal: 12,
+                paddingHorizontal: 16,
                 borderRadius: 999,
                 borderWidth: 1,
-                borderColor: "#ddd",
+                borderColor: "#1E88E5",
                 backgroundColor: "white",
               }}
             >
-              <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+              <Text style={{ fontWeight: "900", color: "#1E88E5" }}>
+                Subscribe
+              </Text>
             </Pressable>
           )}
         </View>
