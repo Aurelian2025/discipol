@@ -1,8 +1,7 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
 import {
   Alert,
   Dimensions,
@@ -46,13 +45,10 @@ const FREE_TRIAL_DAYS = 2;
 
 const REQUIRED_CUSTOM_TASKS_PER_DAY = 5;
 
-// ✅ Admin auth (fixed + clean)
-// NOTE: Admin unlock is purely local (AsyncStorage). It has nothing to do with PayPal / Supabase.
-// It is intended only for you, as an internal unlock on your device.
+// ✅ Admin auth (local only)
 const ADMIN_PASSWORD = "Lucas2";
 const ADMIN_KEY = "discipol.admin.unlocked";
 
-// ✅ Safe helper (keeps behavior consistent)
 async function notify(title: string, message: string) {
   Alert.alert(title, message);
 }
@@ -88,16 +84,14 @@ export default function TodayScreen() {
   const [isPro, setIsPro] = useState(false);
   const [adminUnlocked, setAdminUnlocked] = useState(false);
 
-  // ✅ Custom tasks draft per plan (always 5 inputs for custom plans)
-  const [draftByPlanId, setDraftByPlanId] = useState<Record<string, string[]>>(
-    {}
-  );
+  // Custom tasks draft per plan (always 5 inputs for custom plans)
+  const [draftByPlanId, setDraftByPlanId] = useState<Record<string, string[]>>({});
 
-  // ✅ Admin unlock modal
+  // Admin unlock modal
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [adminPasswordDraft, setAdminPasswordDraft] = useState("");
 
-  // ✅ Feedback modal state
+  // Feedback modal state
   const [noteOpen, setNoteOpen] = useState(false);
   const [notePlanId, setNotePlanId] = useState<string | null>(null);
   const [noteTaskIndex, setNoteTaskIndex] = useState<number>(-1);
@@ -151,7 +145,7 @@ export default function TodayScreen() {
     return showOthers ? [...focused, ...others] : focused;
   }, [activePlans, focus, showOthers]);
 
-  // ✅ Seed 5-line drafts for custom plans that don't yet have 5 tasks saved for the day
+  // Seed 5-line drafts for custom plans
   useEffect(() => {
     if (!workingPlans.length) return;
 
@@ -249,7 +243,6 @@ export default function TodayScreen() {
   async function saveNoteAndMaybeToggle() {
     const note = noteDraft.trim();
 
-    // ✅ Keep your rule: must write feedback
     if (note.length < 3) {
       Alert.alert("Too short", "Please write 1 short sentence.");
       return;
@@ -287,23 +280,19 @@ export default function TodayScreen() {
 
     await persist(updated);
 
-    // ✅ Show feedback about next task
     try {
       const newPlan = updated.find((p) => p.planId === notePlanId);
       if (newPlan) {
         const builtIn = planById(newPlan.planId);
         const custom = customPlans[newPlan.planId];
-
         const builtDay = builtIn?.days?.find(
           (d) => d.day === newPlan.currentDay
         );
         const tasksText = builtIn
           ? (builtDay?.tasks?.map((t) => t.text) ?? [])
           : (custom?.dayTasks?.[newPlan.currentDay] ?? []);
-
         const dayState = newPlan.days?.[newPlan.currentDay];
         const checked = dayState?.tasksChecked ?? [];
-
         const nextIndex = checked.findIndex((v) => !v);
 
         if (nextIndex === -1) {
@@ -334,12 +323,13 @@ export default function TodayScreen() {
   }
 
   async function lockAdmin() {
-  await AsyncStorage.removeItem(ADMIN_KEY);
-  setAdminUnlocked(false);
-  setAdminPasswordDraft("");
-  setAdminModalOpen(false);
-  Alert.alert("Locked", "Admin unlock removed for this device.");
-}
+    await AsyncStorage.removeItem(ADMIN_KEY);
+    setAdminUnlocked(false);
+    setAdminPasswordDraft("");
+    setAdminModalOpen(false);
+    Alert.alert("Locked", "Admin unlock removed for this device.");
+  }
+
   if (activePlans === null) {
     return (
       <View style={{ padding: 16 }}>
@@ -348,37 +338,38 @@ export default function TodayScreen() {
     );
   }
 
+  // No started areas
   if (workingPlans.length === 0) {
     return (
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
         <View
-  style={{
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 4,
-  }}
->
-  <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
-  {!effectivePro && (
-    <Pressable
-      onPress={() => router.push("/subscribe")}
-      style={{
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: "#ddd",
-        backgroundColor: "white",
-      }}
-    >
-      <Text style={{ fontWeight: "900" }}>Subscribe</Text>
-    </Pressable>
-  )}
-</View>
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 4,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+          {!effectivePro && (
+            <Pressable
+              onPress={() => router.push("/subscribe")}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "#ddd",
+                backgroundColor: "white",
+              }}
+            >
+              <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+            </Pressable>
+          )}
+        </View>
 
         <Text style={{ color: "#444" }}>
           You haven’t started any areas yet. Go to Explore and choose an area.
@@ -388,13 +379,9 @@ export default function TodayScreen() {
   }
 
   const bannerPlan = workingPlans[0];
-
-  // ✅ Locked only after Day 2
   const bannerLocked = !effectivePro && bannerPlan.currentDay > FREE_TRIAL_DAYS;
-
   const windowH = Dimensions.get("window").height;
   const modalMaxH = Math.min(windowH * 0.72, 520);
-
   const canSaveFeedback = noteDraft.trim().length >= 3;
 
   return (
@@ -411,57 +398,59 @@ export default function TodayScreen() {
       >
         <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
-<View
-  style={{
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 12,
-    marginBottom: 4,
-  }}
->
-  <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
-  {!effectivePro && (
-    <Pressable
-      onPress={() => router.push("/subscribe")}
-      style={{
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: "#ddd",
-        backgroundColor: "white",
-      }}
-    >
-      <Text style={{ fontWeight: "900" }}>Subscribe</Text>
-    </Pressable>
-  )}
-</View>
+        {/* Header row: Today (left) + Subscribe (right) */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 4,
+          }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+          {!effectivePro && (
+            <Pressable
+              onPress={() => router.push("/subscribe")}
+              style={{
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                borderRadius: 999,
+                borderWidth: 1,
+                borderColor: "#ddd",
+                backgroundColor: "white",
+              }}
+            >
+              <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+            </Pressable>
+          )}
+        </View>
 
         <Text style={{ color: "#444" }}>
           Calendar date: {todayKey()} • One day at a time • No skipping ahead
         </Text>
 
         {!effectivePro && (
-          <Pressable
-            onPress={() => router.push("/subscribe")}
+          <View
             style={{
-              padding: 12,
-              borderRadius: 12,
+              marginTop: 6,
+              marginBottom: 8,
+              padding: 10,
+              borderRadius: 8,
               borderWidth: 1,
-              borderColor: "#111",
-              backgroundColor: "white",
+              borderColor: "#ffc400",
+              backgroundColor: "#fffde7",
             }}
           >
-            <Text style={{ fontWeight: "900" }}>
+            <Text style={{ color: "#444", fontWeight: "900" }}>
               {bannerLocked
                 ? "Free trial completed — Subscribe to continue ⭐"
                 : `Free Trial: Day ${bannerPlan.currentDay}/${FREE_TRIAL_DAYS} ⭐`}
             </Text>
-            <Text style={{ color: "#444", marginTop: 6 }}>
-              Subscribe unlocks all 30 days + Build your own plans.
+            <Text style={{ color: "#444" }}>
+              Subscribe unlocks all 30 days and "Build your own" plans.
             </Text>
-          </Pressable>
+          </View>
         )}
 
         {/* ✅ ADMIN BUTTON (hidden-ish; local device unlock only, not PayPal) */}
