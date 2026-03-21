@@ -53,6 +53,8 @@
       "reactCompiler": true
     },
     "extra": {
+      "SUPABASE_URL": "https://bhldyjhqggrcauzlmvmo.supabase.co",
+      "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJobGR5amhxZ2dyY2F1emxtdm1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM3Njk4MzcsImV4cCI6MjA4OTM0NTgzN30.lzGJS_fz_njOkTRoo9PccLtWS_5xauh1aHwsI5gKdhM",
       "router": {},
       "eas": {
         "projectId": "99b63875-acb7-4365-bd15-35bfa58c8ad9"
