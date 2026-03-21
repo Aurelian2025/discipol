@@ -104,6 +104,9 @@ export default function PlansScreen() {
 
   const areaColors = getAreaCardColors();
 
+  // Add the debug statement RIGHT here:
+  console.log({ isPro, adminUnlocked, effectivePro });
+
   return (
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       <AppHeader />
