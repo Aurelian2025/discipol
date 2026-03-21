@@ -115,26 +115,27 @@ export default function PlansScreen() {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          marginBottom: 4,
+          marginBottom: 10,
         }}
       >
         <Text style={{ fontSize: 22, fontWeight: "900" }}>
           {category ? category : "Choose a category first"}
         </Text>
-
         {!effectivePro && (
           <Pressable
             onPress={() => router.push("/subscribe")}
             style={{
               paddingVertical: 8,
-              paddingHorizontal: 12,
+              paddingHorizontal: 16,
               borderRadius: 999,
               borderWidth: 1,
-              borderColor: "#ddd",
+              borderColor: "#1E88E5",
               backgroundColor: "white",
             }}
           >
-            <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+            <Text style={{ fontWeight: "900", color: "#1E88E5" }}>
+              Subscribe
+            </Text>
           </Pressable>
         )}
       </View>
@@ -238,11 +239,9 @@ export default function PlansScreen() {
             <Text style={{ fontSize: 16, fontWeight: "900" }}>
               Build your own ✍️ {effectivePro ? "" : " (Locked)"}
             </Text>
-
             <Text style={{ color: "#444" }}>
               Create your own area and write daily tasks.
             </Text>
-
             {!effectivePro ? (
               <Text style={{ fontWeight: "900" }}>
                 Requires subscription — Tap to subscribe →
