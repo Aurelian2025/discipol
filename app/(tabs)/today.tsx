@@ -353,7 +353,32 @@ export default function TodayScreen() {
       <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <AppHeader belowHeaderText={"One day at a time • No skipping ahead"} />
 
-        <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+        <View
+  style={{
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 4,
+  }}
+>
+  <Text style={{ fontSize: 22, fontWeight: "900" }}>Today</Text>
+  {!effectivePro && (
+    <Pressable
+      onPress={() => router.push("/subscribe")}
+      style={{
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: "#ddd",
+        backgroundColor: "white",
+      }}
+    >
+      <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+    </Pressable>
+  )}
+</View>
 
         <Text style={{ color: "#444" }}>
           You haven’t started any areas yet. Go to Explore and choose an area.
