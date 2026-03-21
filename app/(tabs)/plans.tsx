@@ -108,6 +108,37 @@ export default function PlansScreen() {
     <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }}>
       <AppHeader />
 
+      {/* Header row: Category (left) + Subscribe (right) */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          marginBottom: 4,
+        }}
+      >
+        <Text style={{ fontSize: 22, fontWeight: "900" }}>
+          {category ? category : "Choose a category first"}
+        </Text>
+
+        {!effectivePro && (
+          <Pressable
+            onPress={() => router.push("/subscribe")}
+            style={{
+              paddingVertical: 8,
+              paddingHorizontal: 12,
+              borderRadius: 999,
+              borderWidth: 1,
+              borderColor: "#ddd",
+              backgroundColor: "white",
+            }}
+          >
+            <Text style={{ fontWeight: "900" }}>Subscribe</Text>
+          </Pressable>
+        )}
+      </View>
+
       {/* Top navigation buttons */}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
         {[
@@ -131,22 +162,6 @@ export default function PlansScreen() {
           </Pressable>
         ))}
 
-        {!effectivePro && (
-          <Pressable
-            onPress={() => router.push("/subscribe")}
-            style={{
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: "#e7b8a5",
-              backgroundColor: "#fff7f2",
-            }}
-          >
-            <Text style={{ fontWeight: "900" }}>Subscribe</Text>
-          </Pressable>
-        )}
-
         {effectivePro && (
           <View
             style={{
@@ -164,11 +179,6 @@ export default function PlansScreen() {
           </View>
         )}
       </View>
-
-      {/* Title */}
-      <Text style={{ fontSize: 22, fontWeight: "900" }}>
-        {category ? category : "Choose a category first"}
-      </Text>
 
       {!category ? (
         <View style={{ gap: 10 }}>
