@@ -7,8 +7,8 @@ const CHANNEL_ID = "today-tasks";
 
 export const TODAY_TASK_REMINDER_TIMES = [
   { taskIndex: 0, hour: 7, minute: 30 },
-  { taskIndex: 1, hour: 9, minute: 50 },
-  { taskIndex: 2, hour: 14, minute: 30 },
+  { taskIndex: 1, hour: 11, minute: 0 },
+  { taskIndex: 2, hour: 10, minute: 0 },
   { taskIndex: 3, hour: 17, minute: 30 },
   { taskIndex: 4, hour: 20, minute: 0 },
 ];
