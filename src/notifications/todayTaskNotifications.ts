@@ -57,3 +57,41 @@ export async function cancelTodayTaskNotifications() {
     }
   }
 }
+
+export async function scheduleTodayTaskNotifications() {
+  const enabled = await getTodayTaskNotificationsEnabled();
+
+  if (!enabled) {
+    await cancelTodayTaskNotifications();
+    return;
+  }
+
+  const granted = await setupTodayTaskNotifications();
+
+  if (!granted) {
+    await setTodayTaskNotificationsEnabled(false);
+    return;
+  }
+
+  await cancelTodayTaskNotifications();
+
+  for (const reminder of TODAY_TASK_REMINDER_TIMES) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `Task ${reminder.taskIndex + 1} reminder`,
+        body: "Open Summary to review today's task.",
+        sound: "default",
+        data: {
+          type: "today-task-reminder",
+          taskIndex: reminder.taskIndex,
+        },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: reminder.hour,
+        minute: reminder.minute,
+        channelId: CHANNEL_ID,
+      },
+    });
+  }
+}
